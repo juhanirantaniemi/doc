@@ -1,9 +1,9 @@
 
-
 import random
 import math
 import numpy as np
 
+print("started")
 #Create random nodes
 coordinates = {}
 coords = [] # {n: ((x, y), distance, radius)}
@@ -27,26 +27,34 @@ def return_distance(d1, d2, r1, r2):
 
 
 #Create weights and distances
-W = np.ones((node_count, node_count)) * np.inf
+W = np.zeros((node_count, node_count))
 for i, coord, d1, r1  in coords:
     for j, coord, d2, r2 in coords[i+1:]:
-        W[i,j] = W[j][i] =  return_distance(d1, d2, r1, r2)
+        W[i,j] = W[j][i] =  round(return_distance(d1, d2, r1, r2), 1)
+maxw = np.max(W)
 
 #Do prims algorithm and store distances between node
-E = np.ones((node_count, node_count)) * False #TRUE / FALSE
+E = np.zeros((node_count, node_count)) #Edges: TRUE / FALSE
 E[0][0] = True
-D = np.ones((node_count, node_count)) * np.inf # NP.INF / NUM
-
-while np.sum(distances) != np.inf:
+D = np.ones((node_count, node_count)) * np.inf #Distances betwee nodes: INF / NUM
+ones = np.ones((node_count, node_count))
+ii=0
+while np.sum(D) == np.inf:
     #Get from rows where edges alraedy exist, next min: row, colum, value
     #Pass the parent rows for the next new row&column+ min_weight
     #Set the new weight
 
     #Create mask with Trues on rows and replace False rows with INF
-    next_E_rows = W*([np.nanmax(edges, axis=1) == 1] * node_count)
-    #Create mask which gives true for potential next edges and np.nan for used
-    minw = numpy.amin(next_E_rows)
-    i, j = np.where(next_E_rows == minw)
+    no_go_rows = (((np.nanmax(E, axis=1) == 0).T * ones).T)
+    W_next = W + ((E + no_go_rows) * maxw) #Make sure that already picked ones and not available rows are not the min
+    minw = np.min(W_next) 
+    i, j = np.argwhere(W_next== minw)[0]
     D[j][:] = D[i][:] + minw
     D[i][j] = D[j][i] = minw
     E[i][j] = E[j][i] = True
+    print(i, j, minw)
+    ii+=1
+print(D)
+
+
+#https://stackoverflow.com/questions/44360084/multiplying-numpy-2d-array-with-1d-array
