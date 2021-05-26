@@ -2,8 +2,10 @@
 import random
 import math
 import numpy as np
+import time as t
 
 print("started")
+t0 = t.time()
 #Create random nodes
 coordinates = {}
 coords = [] # {n: ((x, y), distance, radius)}
@@ -37,24 +39,26 @@ maxw = np.max(W)
 E = np.zeros((node_count, node_count)) #Edges: TRUE / FALSE
 E[0][0] = True
 D = np.ones((node_count, node_count)) * np.inf #Distances betwee nodes: INF / NUM
+D[0][0] = 0
 ones = np.ones((node_count, node_count))
-ii=0
 while np.sum(D) == np.inf:
     #Get from rows where edges alraedy exist, next min: row, colum, value
     #Pass the parent rows for the next new row&column+ min_weight
     #Set the new weight
 
     #Create mask with Trues on rows and replace False rows with INF
-    no_go_rows = (((np.nanmax(E, axis=1) == 0).T * ones).T)
+    no_go_rows = ((np.nanmax(E, axis=1) == 0).T * ones).T #The picked row indicates to known node and column for the new
     W_next = W + ((E + no_go_rows) * maxw) #Make sure that already picked ones and not available rows are not the min
     minw = np.min(W_next) 
     i, j = np.argwhere(W_next== minw)[0]
-    D[j][:] = D[i][:] + minw
-    D[i][j] = D[j][i] = minw
-    E[i][j] = E[j][i] = True
-    print(i, j, minw)
-    ii+=1
+    D[j,:] = D[i,:] + minw #Update the row to the found new node
+    D[:,j] = D[:,i] + minw #update the column to the found new node
+    D[j][j] = 0
+    E[i][j] = E[j][i] = E[j][j] = True
+print(W)
 print(D)
+print(E)
+print(t.time() - t0)
 
 
 #https://stackoverflow.com/questions/44360084/multiplying-numpy-2d-array-with-1d-array
