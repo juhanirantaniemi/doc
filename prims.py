@@ -11,10 +11,11 @@ t0 = t.time()
 formulas = []
 pos = {}# {n: ( distance, radius)}
 node_count = 100
-prod_count = 20
+prod_count = 2
 capacity_factors = {n: 1 - (n/prod_count) for n in range(0, prod_count)}
 n = 0
 loss = 6 / 100 / 1000 # %/1000km
+extra_edges = 10
 
 while len(pos) < node_count:
     x, y = int(random.random()*1000), int(random.random()*1000)
@@ -65,6 +66,7 @@ while np.sum(D) == np.inf:
     D[j][j] = 0
     E[i][j] = E[j][i] = E[j][j] = True
 print(t.time() - t0)
+np.fill_diagonal(E, 0)
 np.fill_diagonal(D, np.inf)#Make sure that the minimum distance is not zero
 
 #Assistin variables
@@ -98,6 +100,31 @@ G = nx.from_numpy_matrix(E)
 nx.draw(G, pos=pos, with_labels=True, font_weight='bold')
 plt.show()
 
+#Calculate Connected node
+np.fill_diagonal(D, 0)
+print(D)
+for _ in range(0, extra_edges):
+    i0, j0 = np.argwhere(D - W * 5 == np.nanmax(D - W*5))[0]
+    iterable_nodes = [(i0,j0),(j0,i0)] #First value with original distances, Second value with "new" potentially shorter paths
+    E[i0,j0] = E[j0,i0] = True
+    D[i0,j0] = D[j0,i0] = W[i0,j0]
+    for i, j in iterable_nodes:
+        d = D[i,j]
+        mask = D[i,:] > (D[j,:] + d)
+        print(mask)
+        if sum(mask) > 0:
+            D[i, mask] = D[mask, i] = D[j,mask] + d
+            iterable_nodes + [(j[0], i) for j in np.argwhere(E[i,:] == True)]
+            #If the new edge direction has smaller values update
+print(D)
+G = nx.from_numpy_matrix(E)
+nx.draw(G, pos=pos, with_labels=True, font_weight='bold')
+plt.show()
+print("done")
+pass
+
+
+
 
 
 # Calculate status quo: Optimal location
@@ -115,3 +142,4 @@ plt.show()
 #https://stackoverflow.com/questions/44360084/multiplying-numpy-2d-array-with-1d-array
 
 #lossess: https://library.e.abb.com/public/56aef360ec16ff59c1256fda004aeaec/04MP0274%20Rev.%2000.pdf
+
