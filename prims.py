@@ -11,11 +11,11 @@ t0 = t.time()
 formulas = []
 pos = {}# {n: ( distance, radius)}
 node_count = 100
-prod_count = 2
+prod_count = 10
 capacity_factors = {n: 1 - (n/prod_count) for n in range(0, prod_count)}
 n = 0
 loss = 6 / 100 / 1000 # %/1000km
-extra_edges = 10
+extra_edges = 3
 
 while len(pos) < node_count:
     x, y = int(random.random()*1000), int(random.random()*1000)
@@ -102,21 +102,24 @@ plt.show()
 
 #Calculate Connected node
 np.fill_diagonal(D, 0)
-print(D)
+#print(D)
 for _ in range(0, extra_edges):
-    i0, j0 = np.argwhere(D - W * 5 == np.nanmax(D - W*5))[0]
+    i0, j0 = np.argwhere(D - W == np.nanmax(D - W))[0]
     iterable_nodes = [(i0,j0),(j0,i0)] #First value with original distances, Second value with "new" potentially shorter paths
     E[i0,j0] = E[j0,i0] = True
-    D[i0,j0] = D[j0,i0] = W[i0,j0]
+    #D[i0,j0] = D[j0,i0] = W[i0,j0]
     for i, j in iterable_nodes:
-        d = D[i,j]
+        Dprev = D
+        d = W[i,j]
         mask = D[i,:] > (D[j,:] + d)
-        print(mask)
+        print(i,j)
+        #print(mask)
         if sum(mask) > 0:
             D[i, mask] = D[mask, i] = D[j,mask] + d
-            iterable_nodes + [(j[0], i) for j in np.argwhere(E[i,:] == True)]
-            #If the new edge direction has smaller values update
-print(D)
+            iterable_nodes += [(child[0], i) for child in np.argwhere(E[i,:] == True) if child[0] != j]#Prevent that wont return back to potential new
+            print(iterable_nodes)
+            
+#print(D)
 G = nx.from_numpy_matrix(E)
 nx.draw(G, pos=pos, with_labels=True, font_weight='bold')
 plt.show()
