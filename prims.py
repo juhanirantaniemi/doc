@@ -10,12 +10,12 @@ t0 = t.time()
 #Create random nodes
 formulas = []
 pos = {}# {n: ( distance, radius)}
-node_count = 4
-prod_count = 2
+node_count = 40
+prod_count = 5
 capacity_factors = {n: 1 - (n/prod_count) for n in range(0, prod_count)}
 n = 0
 loss = 6 / 100 / 1000 # %/1000km
-shortcutx = 1.1
+shortcutx = 5
 
 while len(pos) < node_count:
     x, y = int(random.random()*1000), int(random.random()*1000)
@@ -150,8 +150,6 @@ nx.draw(G, pos=pos, with_labels=True, font_weight='bold')
 plt.show()
 print("done")
 pass
-
-
 
 
 
