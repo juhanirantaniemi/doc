@@ -10,12 +10,12 @@ t0 = t.time()
 #Create random nodes
 formulas = []
 pos = {}# {n: ( distance, radius)}
-node_count = 100
-prod_count = 10
+node_count = 4
+prod_count = 2
 capacity_factors = {n: 1 - (n/prod_count) for n in range(0, prod_count)}
 n = 0
 loss = 6 / 100 / 1000 # %/1000km
-extra_edges = 3
+shortcutx = 1.1
 
 while len(pos) < node_count:
     x, y = int(random.random()*1000), int(random.random()*1000)
@@ -44,8 +44,12 @@ for i, d1, r1  in formulas:
         F[:,i] = F[i,:] = capacity_factors[i]
 maxw = np.max(W)
 
-#Do prims algorithm and store distances between node
+#Do prims algorithm and store distances and paths between node
 E = np.zeros((node_count, node_count)) #Edges: TRUE / FALSE
+Ep = np.empty((node_count,node_count),dtype=object) #Edge paths between nodes. Matrice operations dont work with the 
+STEPS = np.zeros((node_count, node_count))
+for i,j in np.ndindex(Ep.shape):
+    Ep[i,j] = []
 E[0][0] = True
 D = np.ones((node_count, node_count)) * np.inf #Distances betwee nodes: INF / NUM
 D[0][0] = 0
@@ -60,11 +64,26 @@ while np.sum(D) == np.inf:
     forbidded_child_nodes = ((np.nanmax(E, axis=1) == 1).T * ones)
     W_next = W + ((forbidded_parent_nodes + forbidded_child_nodes) * maxw)
     minw = np.min(W_next)
-    i, j = np.argwhere(W_next== minw)[0]
-    D[j,:] = D[i,:] + minw #Update the row to the found new node
-    D[:,j] = D[:,i] + minw #update the column to the found new node
-    D[j][j] = 0
-    E[i][j] = E[j][i] = E[j][j] = True
+    known_n, new_n = np.argwhere(W_next== minw)[0]
+    D[new_n,:] = D[known_n,:] + minw #Update the row to the found new node
+    D[:,new_n] = D[:,known_n] + minw #update the column to the found new node
+    D[new_n][new_n] = 0
+    E[known_n][new_n] = E[new_n][known_n] = E[new_n][new_n] = True
+    for n in np.argwhere(D[known_n,:] < np.inf):
+        n=n[0]
+        if n != new_n:
+            Ep[new_n,n] = [[new_n, known_n]] + Ep[known_n,n]
+            Ep[n, new_n] = [[n2, n1] for n1, n2 in list(reversed(Ep[new_n,n]))]
+            #STEPS[new_n,:] = STEPS[known_n,:] + 1 #Update the row to the found new node
+            #STEPS[:,new_n] = STEPS[:,known_n] + 1 #update the column to the found new node
+    print(Ep)
+
+#Update the new node with old node info + ([new, old])
+#Pass the reverse info for the "mirror" location
+
+print(Ep)
+print(STEPS)
+    #Ep[j,:] = i.append[i]Ep
 print(t.time() - t0)
 np.fill_diagonal(E, 0)
 np.fill_diagonal(D, np.inf)#Make sure that the minimum distance is not zero
@@ -103,21 +122,27 @@ plt.show()
 #Calculate Connected node
 np.fill_diagonal(D, 0)
 #print(D)
-for _ in range(0, extra_edges):
+while True:
     i0, j0 = np.argwhere(D - W == np.nanmax(D - W))[0]
-    iterable_nodes = [(i0,j0),(j0,i0)] #First value with original distances, Second value with "new" potentially shorter paths
+    if D[i0,j0] < shortcutx * W[i0,j0]:
+        #Stop iteration if shortcut is less than N x
+        break
+    iterable_nodes = [(i0,j0),(j0,i0)] #First value i with original distances, Second value j with "new" potentially shorter paths
     E[i0,j0] = E[j0,i0] = True
     #D[i0,j0] = D[j0,i0] = W[i0,j0]
-    for i, j in iterable_nodes:
+    for orig_n, shortcut_n in iterable_nodes:
         Dprev = D
-        d = W[i,j]
-        mask = D[i,:] > (D[j,:] + d)
-        print(i,j)
+        d = W[orig_n,shortcut_n]
+        mask = D[orig_n,:] > (D[shortcut_n,:] + d)
         #print(mask)
         if sum(mask) > 0:
-            D[i, mask] = D[mask, i] = D[j,mask] + d
-            iterable_nodes += [(child[0], i) for child in np.argwhere(E[i,:] == True) if child[0] != j]#Prevent that wont return back to potential new
-            print(iterable_nodes)
+            D[orig_n, mask] = D[mask, orig_n] = D[shortcut_n,mask] + d
+            iterable_nodes += [(child[0], orig_n) for child in np.argwhere(E[orig_n,:] == True) if child[0] != shortcut_n]#Prevent that wont return back to potential new
+            for n in np.argwhere(mask == True):
+                n=n[0]
+                if n != orig_n:
+                    Ep[orig_n,n] = [[orig_n, shortcut_n]] + Ep[shortcut_n,n]
+                    Ep[n, orig_n] = [[n2, n1] for n1, n2 in list(reversed(Ep[orig_n,n]))]
             
 #print(D)
 G = nx.from_numpy_matrix(E)
