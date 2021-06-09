@@ -1,4 +1,4 @@
-import random
+from random import random
 import math
 import numpy as np
 import time as t
@@ -10,7 +10,7 @@ def random_nodes(node_count, ared_width, area_height):
     pos = {}
     n = 0
     while len(nodes) < node_count:
-        x, y = int(random.random()*ared_width), int(random.random()*area_height)
+        x, y = int(random()*ared_width), int(random()*area_height)
         if (x, y) not in pos:
             nodes.append([n, math.sqrt(x**2 + y**2), math.atan2(y,x)])
             pos[(x, y)] = n
@@ -18,14 +18,10 @@ def random_nodes(node_count, ared_width, area_height):
     pos = {n: coord for coord, n in pos.items()}
     return nodes, pos
 
-
-
 def calculate_distance(d1, d2, r1, r2):
     #Uses cosine formula
     radius = min(abs(r1-r2), 2 * math.pi - abs(r1-r2))
     return math.sqrt(d1 ** 2 + d2 ** 2 - 2 * d1 * d2 * math.cos(radius))
-
-
 
 def direct_distances(nodes):
     W = np.zeros((node_count, node_count))
@@ -34,12 +30,17 @@ def direct_distances(nodes):
             W[i,j] = W[j][i] =  round(calculate_distance(d1, d2, r1, r2), 1)
     return W
     
-
-def capacity_factors(nodes):
+def capacity_factors(node_count, prod_count):
     F = np.zeros((node_count, node_count))
     for i in range(0, prod_count):
         F[:,i] = F[i,:] = 1 - (i/prod_count)
     return F
+
+def consumptions(node_count, prod_count):
+    C = np.zeros((node_count, node_count))
+    for i in range(prod_count, node_count):
+        C[:,i] = C[i,:] = random()*10
+    return C
 
 #Do prims algorithm and store distances and paths between node
 def distances_edges_paths(W, node_count):
@@ -49,9 +50,10 @@ def distances_edges_paths(W, node_count):
     #STEPS = np.zeros((node_count, node_count))
     for i,j in np.ndindex(P.shape): #Initialize paths with lists
         P[i,j] = []
-    E[0][0] = True
+    graph_start = int(random()*node_count)
+    E[graph_start][graph_start] = True
     D = np.ones((node_count, node_count)) * np.inf #Distances betwee nodes: INF / NUM
-    D[0][0] = 0
+    D[graph_start][graph_start] = 0
     ones = np.ones((node_count, node_count))
     while np.sum(D) == np.inf:
         #Get from rows where edges alraedy exist, next min: row, colum, value
@@ -110,6 +112,20 @@ def calculate_c():
     print(C)
     (ZigmaF_T_tot-ZigmaF_T_tot* Zigma_w_l_tot) / (ZigmaF_T_tot-ZigmaF_T_tot* Zigma_w_l_site)
 
+def transmission_optimal_production_sites():
+
+    return 0
+
+def generation_optimal_production_sites(C, F):
+    Dpc = D[:prod_count,prod_count:]
+    Fpc = F[:prod_count,prod_count:]
+    #Return production sites with highest Capacity Factor, so that the capacity matches the requirement
+    optimal_prod_node = 0
+    #Calculate how much capacity is required to match all losesses
+    #C = 
+
+    return Pc, Dt, Tc #Production capacity, Distances tranmitted, Transmitted powers
+
 def create_shortcuts(W, D, E, P):
     #Calculate Connected node
     np.fill_diagonal(D, 0)
@@ -152,20 +168,24 @@ node_count = 100
 prod_count = 5
 loss = 6 / 100 / 1000 # %/1000km
 shortcutx = 3
-area_width = 100#int(random.random()*1000)
-area_height = 1000#int(random.random()*1000)
+area_width = int(random()*1000)
+area_height = int(random()*1000)
 
+#Algorithms
 nodes, pos = random_nodes(node_count, area_width, area_height)
 W = direct_distances(nodes)
-F = capacity_factors(nodes)
+C = consumptions(node_count, prod_count)
+F = capacity_factors(node_count, prod_count)
 D, E, P = distances_edges_paths(W, node_count)
-print_graph(E, pos)
+#print_graph(E, pos)
 D, E, P = create_shortcuts(W, D, E, P)
-print_graph(E, pos)
+#print_graph(E, pos)
+transmission_optimal_production_sites()
+generation_optimal_production_sites(C, F)
+caluclate_average_transmission_distances()
+caluclate_average_transmission_distances()
 print(t.time() - t0)
 
-
 #https://stackoverflow.com/questions/44360084/multiplying-numpy-2d-array-with-1d-array
-
 #lossess: https://library.e.abb.com/public/56aef360ec16ff59c1256fda004aeaec/04MP0274%20Rev.%2000.pdf
 
