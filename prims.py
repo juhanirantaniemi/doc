@@ -23,7 +23,7 @@ def calculate_distance(d1, d2, r1, r2):
     radius = min(abs(r1-r2), 2 * math.pi - abs(r1-r2))
     return math.sqrt(d1 ** 2 + d2 ** 2 - 2 * d1 * d2 * math.cos(radius))
 
-def direct_distances(nodes):
+def direct_distances(nodes, node_count):
     W = np.zeros((node_count, node_count))
     for i, d1, r1  in nodes:
         for j, d2, r2 in nodes[i+1:]:
@@ -31,7 +31,7 @@ def direct_distances(nodes):
     return W
     
 def capacity_factors(node_count, prod_count):
-    F = np.zeros((prod_count, node_count))
+    F = np.zeros((prod_count, node_count-prod_count))
     for i in range(0, prod_count):
         F[i,:] = 1 - (i/prod_count)
     return F
@@ -112,8 +112,25 @@ def calculate_c():
     print(C)
     (ZigmaF_T_tot-ZigmaF_T_tot* Zigma_w_l_tot) / (ZigmaF_T_tot-ZigmaF_T_tot* Zigma_w_l_site)
 
-def transmission_optimal_production_sites():
-    return 0
+
+def transmission_optimal_production_sites(F, D, EC, P, node_count, prod_count, loss):
+    optimal_prod_node = 0
+    D = D[:prod_count,prod_count:]
+    EC = EC[:prod_count,prod_count:]
+    P = P[:prod_count,prod_count:]
+    all_ns = np.arange(node_count-prod_count)
+    #Return production sites with highest Capacity Factor, so that the capacity matches the requirement
+    
+    #Calculate how much capacity is required to match all losses
+    EperC = F - F * D * loss #E / C c=1
+    n_min_total = np.argmax(EperC, axis=0)
+    F = F[n_min_total, all_ns]
+    D = D[n_min_total, all_ns]
+    EC_1d = EC[n_min_total, all_ns] #Becomes one 
+    C_per_E = np.sum( EC_1d / (F * ( 1 - D * loss ) ) ) / np.sum(EC_1d)
+    d_per_E = np.dot(D, EC_1d) / np.sum(EC_1d)
+    EE = transmission_energy_network_2d(EC, P, node_count, n_min_total, all_ns)
+    return C_per_E, d_per_E, EE #Production capacity, Distances tranmitted, Transmitted powers
 
 def transmission_energy_network_1d(EC, P, node_count):
     #Iterate path is P matrice and create Energy Edges matrice
@@ -124,25 +141,34 @@ def transmission_energy_network_1d(EC, P, node_count):
                 EE[ii, jj] += EC[i]
     return EE
 
+def transmission_energy_network_2d(EC, P, node_count, n_min_total, all_ns):
+    #Iterate path is P matrice and create Energy Edges matrice
+    EE = np.zeros((node_count, node_count)) #TODO add the loss energy
+    for j in all_ns:
+        i = n_min_total[j]
+        if EC[i, j] > 0:
+            for ii, jj in P[i, j]:
+                EE[ii, jj] += EC[i, j]
+    return EE
 
 
 
-def generation_optimal_production_sites(F, D, EC, P, node_count, prod_count):
+def generation_optimal_production_sites(F, D, EC, P, node_count, prod_count, loss):
     optimal_prod_node = 0
     D = D[optimal_prod_node,prod_count:]
-    F = F[optimal_prod_node,prod_count:]
+    F = F[optimal_prod_node,:]
     EC = EC[optimal_prod_node,prod_count:]
     P = P[optimal_prod_node,prod_count:]
-    all_ns = np.arange(node_count-prod_count)
     #Return production sites with highest Capacity Factor, so that the capacity matches the requirement
-    
-    #Calculate how much capacity is required to match all losses
-    Cpt = np.sum(EC) / ( np.sum(F) * ( 1 - np.sum(D) * loss ) )
-    Dt = np.dot(D, EC)
+    #Calculate how much capacity is required to match all losses.
+    #Capacity / Energy * 8760
+    C_per_E = np.sum( EC / (F * ( 1 - D * loss ) ) ) / np.sum(EC)
+    #Weighted average on distance
+    d_per_E = np.dot(D, EC) / np.sum(EC)
     EE = transmission_energy_network_1d(EC, P, node_count)
-    return Cpt, Dt, EE #Production capacity, Distances tranmitted, Transmitted powers
+    return C_per_E, d_per_E, EE #Production capacity, Distances tranmitted, Transmitted powers
 
-def create_shortcuts(W, D, E, P):
+def create_shortcuts(W, D, E, P, shortcutx):
     #Calculate Connected node
     np.fill_diagonal(D, 0)
     #print(D)
@@ -176,30 +202,35 @@ def print_graph(E, pos):
 
 
 
+def calculation(loss):
+    #Variables
+    node_count = 100
+    prod_count = 10
+    shortcutx = 3
+    area_width = int(random()*1000)
+    area_height = int(random()*1000)
 
-print("started")
-t0 = t.time()
-#Variables
-node_count = 10
-prod_count = 3
-loss = 6 / 100 / 1000 # %/1000km
-shortcutx = 3
-area_width = int(random()*1000)
-area_height = int(random()*1000)
+    #Algorithms
+    nodes, pos = random_nodes(node_count, area_width, area_height)
+    W = direct_distances(nodes, node_count)
+    EC = consumptions(node_count, prod_count)
+    F = capacity_factors(node_count, prod_count)
+    D, E, P = distances_edges_paths(W, node_count)
+    #print_graph(E, pos)
+    D, E, P = create_shortcuts(W, D, E, P, shortcutx)
+    #print_graph(E, pos)
+    C_per_E_zonal, d_per_E_zonal, EE_zonal = generation_optimal_production_sites(F, D, EC, P, node_count, prod_count, loss)
+    C_per_E_nodal, d_per_E_nodal, EE_nodal = transmission_optimal_production_sites(F, D, EC, P, node_count, prod_count, loss)
 
-#Algorithms
-nodes, pos = random_nodes(node_count, area_width, area_height)
-W = direct_distances(nodes)
-EC = consumptions(node_count, prod_count)
-F = capacity_factors(node_count, prod_count)
-D, E, P = distances_edges_paths(W, node_count)
-#print_graph(E, pos)
-D, E, P = create_shortcuts(W, D, E, P)
-#print_graph(E, pos)
-transmission_optimal_production_sites()
-generation_optimal_production_sites(F, D, EC, P, node_count, prod_count)
-print(t.time() - t0)
+    return (area_width, area_height, prod_count, node_count, C_per_E_zonal, d_per_E_zonal, np.std(EE_zonal), C_per_E_nodal, d_per_E_nodal, np.std(EE_nodal))
+
 
 #https://stackoverflow.com/questions/44360084/multiplying-numpy-2d-array-with-1d-array
 #lossess: https://library.e.abb.com/public/56aef360ec16ff59c1256fda004aeaec/04MP0274%20Rev.%2000.pdf
 
+print("started")
+t0 = t.time()
+loss = 6 / 100 / 1000 # %/1000km
+for _ in range (0,1000):
+    results = [result_tuple for result_tuple in calculation(loss)]
+print(t.time() - t0)
