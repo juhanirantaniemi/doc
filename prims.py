@@ -47,7 +47,7 @@ def distances_edges_paths(W, node_count):
     maxw = np.max(W)
     D = np.ones((node_count, node_count)) * np.inf #Distances betwee nodes
     E = np.zeros((node_count, node_count)) #Edges: TRUE / FALSE
-    P = np.empty((node_count,node_count),dtype=object) #Paths between nodes Matrice operations dont work with the lists
+    P = np.empty((node_count,node_count),dtype=object) #Paths between nodes
     #STEPS = np.zeros((node_count, node_count))
     for i,j in np.ndindex(P.shape): #Initialize paths with lists - Matrice operations dont work with the lists in numpy unfortunately
         P[i,j] = []
